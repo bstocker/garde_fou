@@ -133,7 +133,7 @@ server {
 }
 ```
 Ctrl+s  
-Ctrl+x
+Ctrl+x  
 **Création de votre configuration Nginx** 
 ```
 nano nginx/default.conf

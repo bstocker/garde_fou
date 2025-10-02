@@ -12,7 +12,7 @@ Difficulté : Très facile (~5 minutes)
 -------------------------------------------------------------------------------------------------------
 RDV sur le laboratoire numérique : <a href="http://lab-boris.fr" target="_blank">Laboratoire</a> **(click droit ouvrir dans un nouvel onglet)** puis créer une instance **+ ADD NEW INSTANCE**
 
-**Astuce du copier/coller**  
+**Astuce pour coller du code dans votre instance du laboratoire**  
 Vous aurez à coller du code dans votre instance. Toutefois la combinaison de touche Ctrl+V ne fonctionne pas dans le navigateur.  
 La combinaison de touche pour coller du code dans votre instance sera en fonction de votre navigateur.  
 - Coller dans Chrome -> Ctrl+Shift+v

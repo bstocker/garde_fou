@@ -10,7 +10,7 @@ Séquence 1 : Le Laboratoire
 Objectif : Création d'une instance dans un laboratoire numérique  
 Difficulté : Très facile (~5 minutes)
 -------------------------------------------------------------------------------------------------------
-RDV sur le laboratoire numérique : [Laboratoire](http://lab-boris.fr){:target="_blank"} puis créer une instance **+ ADD NEW INSTANCE**
+RDV sur le laboratoire numérique : <a href="http://lab-boris.fr" target="_blank">Laboratoire</a> puis créer une instance **+ ADD NEW INSTANCE**
 
 **Astuce du copier/coller**  
 Vous aurez à coller du code dans votre instance. Toutefois la combinaison de touche Ctrl+V ne fonctionne pas dans le navigateur.  

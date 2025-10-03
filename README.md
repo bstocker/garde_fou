@@ -1,8 +1,7 @@
 ------------------------------------------------------------------------------------------------------
-ATELIER STREAMING ADAPTATIF
+ATELIER GARDE FOU
 ------------------------------------------------------------------------------------------------------
-L’idée en 30 secondes : Dans le cadre du streaming d'une vidéo, au lieu d’envoyer un seul flux vidéo à débit fixe, on prépare plusieurs versions (renditions) de la même vidéo — par exemple 1080p, 720p, 480p, chacune à différents bitrates — puis on découpe la vidéo en petits segments (2–6 s).
-Le player (navigateur, app mobile, Unity/ExoPlayer…) mesure en continu la bande passante et l’état du buffer, et change de version à la volée segment après segment pour éviter les coupures et s’adapter au réseau de l’utilisateur.
+L’idée en 30 secondes : l'objectif est vérifier qu’un fichier JSON est correctement structuré et utilisable dans une application en passant par un script PHP de vérification (serveur Garde Fou).
   
 -------------------------------------------------------------------------------------------------------
 Séquence 1 : Le Laboratoire
@@ -20,9 +19,9 @@ La combinaison de touche pour coller du code dans votre instance sera en fonctio
 - Coller dans EI et Safari -> Ctrl+v
   
 ---------------------------------------------------
-Séquence 2 : Création de votre serveur de Streaming
+Séquence 2 : Création de votre PHP
 ---------------------------------------------------
-Objectif : Créer un serveur Web utilisant Dash.js  
+Objectif : Créer un serveur PHP et un script de vérification  
 Difficulté : Simple (~10 minutes)
 ---------------------------------------------------
 
@@ -30,182 +29,136 @@ Dans votre instance du laboratoire copier/coller les codes ci-dessous etape par 
 
 **Installation de l'environnement**  
 ```
-git clone https://github.com/bstocker/Streaming_Adaptatif.git
-cd Streaming_Adaptatif
-mkdir -p site/media nginx
-apk add nano ffmpeg
+apk add php php-cli php-json php-mbstring curl nano
 ```
-**Création du manisfest et des fichiers .m4s**  
+**création d'un fichier validate_json.php**  
 ```
-ffmpeg -i Sample.mp4 -map 0 -b:v 1M -s:v:0 1280x720 -c:v libx264 -c:a aac -f dash manifest.mpd
-```
-**On déplace le manisfest et les fichiers .m4s dans le répertoire media** 
-```
-mv manifest.mpd *.m4s site/media
-```
-**Création de votre index.html** 
-```
-nano site/index.html
-```
-```
-<!doctype html>
-<html lang="fr">
-<head>
-  <meta charset="utf-8" />
-  <title>DASH Player (dash.js)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body{font-family:system-ui,Arial,sans-serif;max-width:900px;margin:2rem auto;padding:1rem}
-    video{width:100%;max-height:70vh;background:#000}
-    code{background:#f3f3f3;padding:.1rem .3rem;border-radius:4px}
-    .log{font:12px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;background:#fafafa;border:1px solid #eee;padding:.75rem;border-radius:8px}
-  </style>
-  <script src="https://cdn.jsdelivr.net/npm/dashjs@4/dist/dash.all.min.js"></script>
-</head>
-<body>
-  <h1>DASH Player</h1>
-  <p>Par défaut, la page charge <code>/media/manifest.mpd</code>.<br>
-     Vous pouvez aussi passer une URL via <code>?src=...</code></p>
+<?php
+// Exemple de validation JSON côté serveur (PHP)
 
-  <video id="video" controls></video>
+// 1. Récupérer le contenu du JSON (ici en POST)
+$payload = file_get_contents("php://input");
 
-  <div class="log" id="log"></div>
-
-  <script>
-    const params = new URLSearchParams(location.search);
-    const src = params.get('src') || '/media/manifest.mpd';
-    const v = document.getElementById('video');
-    const log = (m)=>document.getElementById('log').textContent += m + "\n";
-
-    const player = dashjs.MediaPlayer().create();
-    player.updateSettings({ 'debug': { 'logLevel': dashjs.Debug.LOG_LEVEL_INFO }});
-    player.on(dashjs.MediaPlayer.events.ERROR, e => log('ERROR: ' + JSON.stringify(e)));
-    player.on(dashjs.MediaPlayer.events.PLAYBACK_STARTED, ()=>log('PLAYBACK_STARTED'));
-    player.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, ()=>log('STREAM_INITIALIZED'));
-    player.on(dashjs.MediaPlayer.events.BUFFER_LEVEL_UPDATED, e=>log('BUFFER: ' + e.mediaType + ' ' + e.bufferLevel.toFixed(2) + 's'));
-
-    log('Loading: ' + src);
-    player.initialize(v, src, true);
-  </script>
-</body>
-</html>
-```
-Ctrl+s  
-Ctrl+x  
-**Création de votre configuration Nginx** 
-```
-nano nginx/default.conf
-```
-```
-server {
-  listen 80;
-  server_name _;
-
-  root /usr/share/nginx/html;
-  index index.html;
-
-  # Table MIME standard (text/html, css, js, mp4, etc.)
-  include /etc/nginx/mime.types;
-
-  # Page web
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-
-  # Médias DASH sous /media/
-  location /media/ {
-    # Types spécifiques DASH (on n'altère pas la table globale)
-    types {
-      application/dash+xml mpd;
-      video/iso.segment m4s;
-    }
-
-    # CORS utiles pour tests (VR / mobile / autre origine)
-    add_header Access-Control-Allow-Origin *;
-    add_header Access-Control-Allow-Methods "GET, OPTIONS";
-    add_header Access-Control-Allow-Headers "Range, Origin, Accept, Content-Type";
-    add_header Access-Control-Expose-Headers "Content-Length, Content-Range";
-    add_header Accept-Ranges bytes;
-
-    # autoindex on;   # <- décommente pour lister les fichiers (debug)
-    try_files $uri =404;
-  }
+// 2. Vérifier taille max (exemple : 2 Mo)
+if (strlen($payload) > 2 * 1024 * 1024) {
+    http_response_code(400);
+    die(json_encode(["error" => "Fichier JSON trop volumineux"]));
 }
-```
-Ctrl+s  
-Ctrl+x  
-**Création de votre configuration Nginx** 
-```
-nano nginx/default.conf
-```
-```
-server {
-  listen 80;
-  server_name _;
 
-  root /usr/share/nginx/html;
-  index index.html;
-
-  # Table MIME standard (text/html, css, js, mp4, etc.)
-  include /etc/nginx/mime.types;
-
-  # Page web
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-
-  # Médias DASH sous /media/
-  location /media/ {
-    # Types spécifiques DASH (on n'altère pas la table globale)
-    types {
-      application/dash+xml mpd;
-      video/iso.segment m4s;
-    }
-
-    # CORS utiles pour tests (VR / mobile / autre origine)
-    add_header Access-Control-Allow-Origin *;
-    add_header Access-Control-Allow-Methods "GET, OPTIONS";
-    add_header Access-Control-Allow-Headers "Range, Origin, Accept, Content-Type";
-    add_header Access-Control-Expose-Headers "Content-Length, Content-Range";
-    add_header Accept-Ranges bytes;
-
-    # autoindex on;   # <- décommente pour lister les fichiers (debug)
-    try_files $uri =404;
-  }
+// 3. Vérifier encodage UTF-8
+if (!mb_detect_encoding($payload, 'UTF-8', true)) {
+    http_response_code(400);
+    die(json_encode(["error" => "Encodage non valide (UTF-8 attendu)"]));
 }
+
+// 4. Parser le JSON
+$data = json_decode($payload, true);
+if (json_last_error() !== JSON_ERROR_NONE) {
+    http_response_code(400);
+    die(json_encode(["error" => "JSON mal formé"]));
+}
+
+// 5. Vérifier les champs obligatoires
+$requiredFields = ["videoId", "image360", "video", "labels", "timeline", "version"];
+
+foreach ($requiredFields as $field) {
+    if (!isset($data[$field])) {
+        http_response_code(400);
+        die(json_encode(["error" => "Champ manquant : $field"]));
+    }
+}
+
+// 6. Vérifier le type des champs principaux
+if (!is_string($data["videoId"]) || strlen($data["videoId"]) === 0) {
+    die(json_encode(["error" => "videoId doit être une chaîne non vide"]));
+}
+
+if (!filter_var($data["image360"]["src"], FILTER_VALIDATE_URL)) {
+    die(json_encode(["error" => "image360.src doit être une URL valide"]));
+}
+
+if (!filter_var($data["video"]["src"], FILTER_VALIDATE_URL)) {
+    die(json_encode(["error" => "video.src doit être une URL valide"]));
+}
+
+if (!is_array($data["labels"])) {
+    die(json_encode(["error" => "labels doit être un tableau"]));
+}
+
+if (!is_array($data["timeline"])) {
+    die(json_encode(["error" => "timeline doit être un tableau"]));
+}
+
+if (!is_int($data["version"]) || $data["version"] < 1) {
+    die(json_encode(["error" => "version doit être un entier ≥ 1"]));
+}
+
+// 7. Si tout est OK
+http_response_code(200);
+echo json_encode(["status" => "OK", "message" => "JSON valide"]);
+?>
 ```
 Ctrl+s  
 Ctrl+x  
-**Création du docker-compose** 
-```
-nano docker-compose.yml
-```
-```
-services:
-  web:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-    volumes:
-      # Un seul montage pour le site (inclut le dossier media)
-      - ./site:/usr/share/nginx/html:ro
-      # On monte un REPERTOIRE de conf => plus robuste
-      - ./nginx:/etc/nginx/conf.d:ro
-    restart: unless-stopped
-```
-Ctrl+s  
-Ctrl+x
-
-**Lancement du serveur Web**   
-```
-docker compose up -d
-```
   
-**Votre serveur de Streaming est prêt**  
-Cliquez sur le Bouton **[OPEN PORT]** de votre instance du laboratoire puis tappez **8080**  
-C'est terminé !
+**On lance le serveur et réccupérer l'URL de mécanisme de contrôle** 
+```
+php -S 0.0.0.0:8000
+```
+Pour récuppérer l'URL de contrôle, cliquez sur le bouton **[OPEN PORT] puis tapez 8000**  
+Exemple d'url http://ip10-1-16-4-d3foar1u8201c9uou19g-8000.direct.lab-boris.fr/  
+Et votre "API" de contrôle sera donc http://ip10-1-16-4-d3foar1u8201c9uou19g-8000.direct.lab-boris.fr/validate_json.php
+  
+**Processus de vérification** 
+Vous pouvez à present utiliser la solution **Postman** pour envoyer vos structures JSON à votre serveur PHP et demander une vérification de sa part (Si OK alors Code 200 en sortie, Si HS alors code 400 en sortie). N'oubliez pas d'**envoyer vos JSON en POST**.  
+  
+Exemple de structure JSON Correct :
+```
+{
+  "videoId": "demo123",
+  "image360": { "src": "https://cdn.exemple.com/image.jpg" },
+  "video": { "src": "https://cdn.exemple.com/video.mp4" },
+  "labels": [
+    {
+      "id": "label1",
+      "position": [0, 1.5, -3],
+      "content": {
+        "label": { "en": "Scalpel", "fr": "Scalpel" },
+        "description": { "en": "A surgical tool", "fr": "Un outil chirurgical" }
+      }
+    }
+  ],
+  "timeline": [
+    { "id": "event1", "type": "marker", "timestamp": 10 }
+  ],
+  "version": 1
+}
+```
+Exemple de structure JSON Incorrect :
+```
+{
+  "videoId": "demo123",
+  "image360": { "src": "https://cdn.exemple.com/image.jpg" },
+  "video": { "src": "https://cdn.exemple.com/video.mp4" },
+  "labels": [
+    {
+      "id": "label1",
+      "position": [0, 1.5, -3],
+      "content": {
+        "label": { "en": "Scalpel", "fr": "Scalpel" },
+        "description": { "en": "A surgical tool", "fr": "Un outil chirurgical" }
+      }
+    }
+  ],
+  "timeline": [
+    { "id": "event1", "type": "marker", "timestamp": 10 }
+  ],
+  "version": 1
+}
+```
+Bravo l'atelier est terminé !
   
 ---------------------------------------------------
 Capitalisation
 ---------------------------------------------------
-Vous avez apris au travers de cet atelier comment créer un serveur Web pour la diffusion de vidéo en streaming adaptatif.
+Vous avez apris au travers de cet atelier comment monter un serveur PHP qui viendra vérfier la structure d'un JSON. C'est une vérification à faire avant l'execution d'un traitement.

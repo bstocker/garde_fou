@@ -108,7 +108,13 @@ php -S 0.0.0.0:8000
 Pour récuppérer l'URL de contrôle, cliquez sur le bouton **[OPEN PORT] puis tapez 8000**  
 Exemple d'url http://ip10-1-16-4-d3foar1u8201c9uou19g-8000.direct.lab-boris.fr/  
 Et votre "API" de contrôle sera donc http://ip10-1-16-4-d3foar1u8201c9uou19g-8000.direct.lab-boris.fr/validate_json.php
-  
+
+---------------------------------------------------
+Séquence 3 : Testez vos structures JSON
+---------------------------------------------------
+Objectif : Demander à votre serveur de vérifier la structure d'un JSON  
+Difficulté : Simple (~10 minutes)
+---------------------------------------------------
 **Processus de vérification** 
 Vous pouvez à present utiliser la solution **Postman** pour envoyer vos structures JSON à votre serveur PHP et demander une vérification de sa part (Si OK alors Code 200 en sortie, Si HS alors code 400 en sortie). N'oubliez pas d'**envoyer vos JSON en POST**.  
   
